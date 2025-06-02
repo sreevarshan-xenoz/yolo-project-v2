@@ -7,7 +7,7 @@ echo.
 echo Press Ctrl+C to stop the application
 echo.
 
-REM DroidCam typically appears as camera index 0 when connected via USB
+REM Using camera index 0 which is working according to tests
 python people_counter.py --source 0 --port 8080
 
 pause 
