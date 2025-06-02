@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 People Counter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .video-container {
+            position: relative;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .video-feed {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .card {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00bfff;
+        }
+        .slider-container {
+            padding: 10px 0;
+        }
+        .settings-label {
+            margin-bottom: 5px;
+            display: block;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-running {
+            background-color: #28a745;
+        }
+        .status-warning {
+            background-color: #ffc107;
+        }
+        .status-error {
+            background-color: #dc3545;
+        }
+        .status-initializing {
+            background-color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-center">YOLOv8 People Counter</h1>
+                <div class="d-flex justify-content-center align-items-center">
+                    <span id="status-indicator" class="status-indicator status-initializing"></span>
+                    <span id="status-text">Initializing...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="video-container">
+                    <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Video Feed">
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Settings</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="slider-container">
+                                    <label for="linePosition" class="settings-label">Counting Line Position</label>
+                                    <input type="range" class="form-range" min="0.1" max="0.9" step="0.05" id="linePosition" value="0.55">
+                                    <small class="text-muted" id="linePositionValue">55%</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="slider-container">
+                                    <label for="confidence" class="settings-label">Confidence Threshold</label>
+                                    <input type="range" class="form-range" min="0.1" max="0.9" step="0.05" id="confidence" value="0.5">
+                                    <small class="text-muted" id="confidenceValue">0.50</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="slider-container">
+                                    <label for="skipFrames" class="settings-label">Frame Skip</label>
+                                    <input type="range" class="form-range" min="0" max="5" step="1" id="skipFrames" value="1">
+                                    <small class="text-muted" id="skipFramesValue">1</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12 d-flex justify-content-between">
+                                <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+                                <button id="resetCounter" class="btn btn-danger">Reset Counter</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Analytics</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <div class="text-center">
+                                    <div>People Count</div>
+                                    <div id="peopleCount" class="stat-value">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="text-center">
+                                    <div>Current People</div>
+                                    <div id="currentCount" class="stat-value">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="text-center">
+                                    <div>FPS</div>
+                                    <div id="fps" class="stat-value">0.0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="text-center">
+                                    <div>Processing Time</div>
+                                    <div id="processingTime" class="stat-value">0 ms</div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-6">
+                                <div>Model:</div>
+                                <div id="modelName" class="text-info">yolov8l.pt</div>
+                            </div>
+                            <div class="col-6">
+                                <div>Device:</div>
+                                <div id="deviceName" class="text-info">cpu</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Connection Info</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <strong>DroidCam Details:</strong>
+                            <div>IP: 192.168.1.103</div>
+                            <div>Port: 4747</div>
+                            <div>URL: http://192.168.1.103:4747/video</div>
+                        </div>
+                        <div class="alert alert-info">
+                            Make sure your phone and computer are connected to the same WiFi network.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update settings display
+        document.getElementById('linePosition').addEventListener('input', function() {
+            document.getElementById('linePositionValue').textContent = Math.round(this.value * 100) + '%';
+        });
+        
+        document.getElementById('confidence').addEventListener('input', function() {
+            document.getElementById('confidenceValue').textContent = parseFloat(this.value).toFixed(2);
+        });
+        
+        document.getElementById('skipFrames').addEventListener('input', function() {
+            document.getElementById('skipFramesValue').textContent = this.value;
+        });
+        
+        // Save settings
+        document.getElementById('saveSettings').addEventListener('click', function() {
+            const settings = {
+                line_position: parseFloat(document.getElementById('linePosition').value),
+                confidence: parseFloat(document.getElementById('confidence').value),
+                skip_frames: parseInt(document.getElementById('skipFrames').value)
+            };
+            
+            fetch('/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Settings updated successfully!');
+                } else {
+                    alert('Error updating settings: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+        });
+        
+        // Reset counter
+        document.getElementById('resetCounter').addEventListener('click', function() {
+            fetch('/reset', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('peopleCount').textContent = '0';
+                }
+            });
+        });
+        
+        // Update analytics
+        function updateAnalytics() {
+            fetch('/analytics')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('peopleCount').textContent = data.counts.person || 0;
+                    document.getElementById('currentCount').textContent = data.current_count || 0;
+                    document.getElementById('fps').textContent = data.fps || 0;
+                    document.getElementById('processingTime').textContent = data.processing_time + ' ms';
+                    document.getElementById('modelName').textContent = data.model_name;
+                    document.getElementById('deviceName').textContent = data.device;
+                    
+                    // Update status indicator
+                    const statusIndicator = document.getElementById('status-indicator');
+                    const statusText = document.getElementById('status-text');
+                    
+                    statusIndicator.className = 'status-indicator';
+                    
+                    if (data.status === 'running') {
+                        statusIndicator.classList.add('status-running');
+                        statusText.textContent = 'Running';
+                    } else if (data.status.startsWith('warning')) {
+                        statusIndicator.classList.add('status-warning');
+                        statusText.textContent = data.status;
+                    } else if (data.status.startsWith('error')) {
+                        statusIndicator.classList.add('status-error');
+                        statusText.textContent = data.status;
+                    } else {
+                        statusIndicator.classList.add('status-initializing');
+                        statusText.textContent = data.status;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching analytics:', error);
+                });
+        }
+        
+        // Update analytics every second
+        setInterval(updateAnalytics, 1000);
+        
+        // Initial update
+        updateAnalytics();
+    </script>
+</body>
+</html> 
