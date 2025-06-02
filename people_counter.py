@@ -715,6 +715,8 @@ def create_html_template():
     logger.info("HTML template created")
 
 def main():
+    global MODEL_PATH
+    
     parser = argparse.ArgumentParser(description='YOLOv8 People Counter with DroidCam')
     parser.add_argument('--source', type=str, default='http://192.168.1.103:4747/video',
                         help='Video source (DroidCam URL, webcam index, or video file)')
@@ -726,7 +728,6 @@ def main():
     args = parser.parse_args()
     
     # Update model path if specified
-    global MODEL_PATH
     if args.model != MODEL_PATH:
         MODEL_PATH = args.model
         with analytics_lock:
